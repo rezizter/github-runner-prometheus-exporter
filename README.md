@@ -12,3 +12,21 @@ It supports:
 * Prometheus metrics.
 * Automatic polling of GitHub.
 * API error and exporter health monitoring.
+
+# Install
+
+Clone this reepo
+```
+git clone https://github.com/rezizter/github-runner-prometheus-exporter.git
+cd github-runner-prometheus-exporter
+```
+
+Install the required packages.
+```
+python3 -m venv venv
+source venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+
