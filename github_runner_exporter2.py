@@ -86,14 +86,15 @@ def load_repositories():
 
 
 def get_runners(endpoint):
-    """Fetch all runners with pagination."""
+    """Fetch every page using GitHub's Link header."""
     runners = []
-    page = 1
+    url = endpoint
+    params = {"per_page": 100}
 
-    while True:
+    while url:
         response = SESSION.get(
-            endpoint,
-            params={"per_page": 100, "page": page},
+            url,
+            params=params,
             timeout=30,
         )
         response.raise_for_status()
@@ -101,11 +102,15 @@ def get_runners(endpoint):
         data = response.json()
         runners.extend(data.get("runners", []))
 
-        if len(runners) >= data.get("total_count", 0):
-            break
+        # Requests parses GitHub's Link header automatically
+        next_page = response.links.get("next", {}).get("url")
 
-        page += 1
+        # Only send params on the initial request.
+        # Subsequent URLs already contain pagination parameters.
+        params = None
+        url = next_page
 
+    logging.info("Fetched %d runners from %s", len(runners), endpoint)
     return runners
 
 
