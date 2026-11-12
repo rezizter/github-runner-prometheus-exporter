@@ -69,3 +69,12 @@ github_runners_busy{scope="organization",repository="my-organization"} 2
 
 github_runners_idle{scope="organization",repository="my-organization"} 3
 ```
+
+# Prometheus configuration
+Add the following to ==prometheus.yml==:
+```
+Add the following to prometheus.yml:
+
+```
+
+```
