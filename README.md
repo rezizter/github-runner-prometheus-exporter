@@ -51,3 +51,21 @@ Start the exporter:
 ```
 python github_runner_exporter.py
 ```
+
+# Check Prometheus metrics
+Open:
+!!! note
+    http://localhost:9877/metrics
+
+Example output:
+```
+github_runners_total{scope="organization",repository="my-organization"} 5
+
+github_runners_online{scope="organization",repository="my-organization"} 4
+
+github_runners_offline{scope="organization",repository="my-organization"} 1
+
+github_runners_busy{scope="organization",repository="my-organization"} 2
+
+github_runners_idle{scope="organization",repository="my-organization"} 3
+```
