@@ -39,14 +39,12 @@ RUNNER_BUSY = Gauge(
     ["org", "repo", "runner", "runner_id", "scope"]
 )
 
-RUNNER_INFO.labels(
-    org, repo, name, runner_id,
-    os_name,
-    runner.get("architecture", "unknown"),
-    version,
-    labels,
-    scope,
-).set(1)
+RUNNER_INFO = Gauge(
+    "github_actions_runner_info",
+    "Runner information",
+    ["org", "repo", "runner", "runner_id",
+     "os", "architecture", "version", "labels", "scope"]
+)
 
 RUNNERS_TOTAL = Gauge(
     "github_actions_runners_total",
@@ -173,14 +171,16 @@ def collect_scope(org, repo, scope, endpoint):
             org, repo, name, runner_id, scope
         ).set(1 if busy else 0)
 
-        RUNNER_INFO.labels(
-            org, repo, name, runner_id,
-            os_name,
-            runner.get("architecture", "unknown"),
-            version,
-            labels,
-            scope,
-        ).set(1)
+# Only expose runner info for repositories in repos.txt
+if scope == "repo" and repo:
+    RUNNER_INFO.labels(
+        org, repo, name, runner_id,
+        os_name,
+        runner.get("architecture", "unknown"),
+        version,
+        labels,
+        scope,
+    ).set(1)
 
     RUNNERS_TOTAL.labels(org, repo, scope).set(len(runners))
     RUNNERS_ONLINE.labels(org, repo, scope).set(online)
