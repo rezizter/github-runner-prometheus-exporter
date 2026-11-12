@@ -1,0 +1,5 @@
+# One repository per line
+my-org/backend
+my-org/frontend
+my-org/infrastructure
+another-org/platform
