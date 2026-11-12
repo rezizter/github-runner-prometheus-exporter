@@ -39,12 +39,14 @@ RUNNER_BUSY = Gauge(
     ["org", "repo", "runner", "runner_id", "scope"]
 )
 
-RUNNER_INFO = Gauge(
-    "github_actions_runner_info",
-    "Runner information",
-    ["org", "repo", "runner", "runner_id",
-     "os", "architecture", "version", "labels", "scope"]
-)
+RUNNER_INFO.labels(
+    org, repo, name, runner_id,
+    os_name,
+    runner.get("architecture", "unknown"),
+    version,
+    labels,
+    scope,
+).set(1)
 
 RUNNERS_TOTAL = Gauge(
     "github_actions_runners_total",
