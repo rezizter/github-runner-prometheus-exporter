@@ -85,32 +85,57 @@ def load_repositories():
         return []
 
 
-def get_runners(endpoint):
-    """Fetch every page using GitHub's Link header."""
-    runners = []
-    url = endpoint
-    params = {"per_page": 100}
 
-    while url:
+def get_runners(endpoint):
+    """Fetch all GitHub runner pages."""
+    runners = []
+    page = 1
+    per_page = 100
+    total_count = None
+
+    while True:
+        logging.info("Fetching %s page %d", endpoint, page)
+
         response = SESSION.get(
-            url,
-            params=params,
+            endpoint,
+            params={
+                "per_page": per_page,
+                "page": page,
+            },
             timeout=30,
         )
+
         response.raise_for_status()
-
         data = response.json()
-        runners.extend(data.get("runners", []))
 
-        # Requests parses GitHub's Link header automatically
-        next_page = response.links.get("next", {}).get("url")
+        batch = data.get("runners", [])
 
-        # Only send params on the initial request.
-        # Subsequent URLs already contain pagination parameters.
-        params = None
-        url = next_page
+        if total_count is None:
+            total_count = data.get("total_count", 0)
+            logging.info("GitHub reports %d runners", total_count)
 
-    logging.info("Fetched %d runners from %s", len(runners), endpoint)
+        runners.extend(batch)
+
+        logging.info(
+            "Page %d returned %d runners; collected %d/%d",
+            page,
+            len(batch),
+            len(runners),
+            total_count,
+        )
+
+        # Stop if all runners have been retrieved
+        if len(runners) >= total_count:
+            break
+
+        # Prevent infinite loops if API returns an empty page
+        if not batch:
+            logging.warning("Empty page received; stopping pagination")
+            break
+
+        page += 1
+
+    logging.info("Total runners retrieved: %d", len(runners))
     return runners
 
 
