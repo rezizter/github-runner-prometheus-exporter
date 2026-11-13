@@ -73,5 +73,8 @@ github_runners_idle{scope="organization",repository="my-organization"} 3
 # Prometheus configuration
 Add the following to <mark>prometheus.yml</mark>:
 ```
-
+- job_name: github-runner
+  static_configs:
+  - targets:
+    - localhost:9877
 ```
