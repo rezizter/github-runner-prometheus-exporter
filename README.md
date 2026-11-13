@@ -73,8 +73,5 @@ github_runners_idle{scope="organization",repository="my-organization"} 3
 # Prometheus configuration
 Add the following to <mark>prometheus.yml</mark>:
 ```
-Add the following to prometheus.yml:
-
-```
 
 ```

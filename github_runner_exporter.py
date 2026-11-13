@@ -3,244 +3,258 @@ import os
 import time
 import logging
 import requests
+import urllib3
 
 from prometheus_client import start_http_server, Gauge
 
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 # Configuration
-GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
-GITHUB_ORG = os.getenv("GITHUB_ORG")
-GITHUB_REPOS = os.getenv("GITHUB_REPOS", "")
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+GITHUB_ORG = os.getenv("GITHUB_ORG", "")
+REPOS_FILE = os.getenv("REPOS_FILE", "repos.txt")
 POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "60"))
-EXPORTER_PORT = int(os.getenv("EXPORTER_PORT", "9877"))
+PORT = int(os.getenv("EXPORTER_PORT", "9105"))
 
-GITHUB_API = os.getenv(
-    "GITHUB_API_URL",
-    "https://api.github.com"
-)
+API_URL = "https://api.github.com"
 
-API_VERSION = "2022-11-28"
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s"
-)
-
-logger = logging.getLogger(__name__)
-
-session = requests.Session()
-session.headers.update({
+SESSION = requests.Session()
+SESSION.verify = False
+SESSION.headers.update({
     "Authorization": f"Bearer {GITHUB_TOKEN}",
     "Accept": "application/vnd.github+json",
-    "X-GitHub-Api-Version": API_VERSION,
+    "X-GitHub-Api-Version": "2022-11-28",
 })
 
-
-# Prometheus metrics
-
+# Metrics
 RUNNER_STATUS = Gauge(
-    "github_runner_status",
-    "Runner status (1=online, 0=offline)",
-    ["scope", "repository", "runner", "os"]
+    "github_actions_runner_status",
+    "Runner status: 1=online, 0=offline",
+    ["org", "repo", "runner", "runner_id", "os", "scope"]
 )
 
 RUNNER_BUSY = Gauge(
-    "github_runner_busy",
-    "Runner busy status (1=busy, 0=idle)",
-    ["scope", "repository", "runner"]
+    "github_actions_runner_busy",
+    "Runner busy: 1=busy, 0=idle",
+    ["org", "repo", "runner", "runner_id", "scope"]
 )
 
 RUNNER_INFO = Gauge(
-    "github_runner_info",
-    "GitHub runner information",
-    ["scope", "repository", "runner", "version", "labels"]
+    "github_actions_runner_info",
+    "Runner information",
+    ["org", "repo", "runner", "runner_id",
+     "os", "architecture", "version", "labels", "scope"]
 )
 
-RUNNER_TOTAL = Gauge(
-    "github_runners_total",
-    "Total number of GitHub Actions runners",
-    ["scope", "repository"]
+RUNNERS_TOTAL = Gauge(
+    "github_actions_runners_total",
+    "Total self-hosted runners",
+    ["org", "repo", "scope"]
 )
 
-RUNNER_ONLINE = Gauge(
-    "github_runners_online",
-    "Number of online GitHub Actions runners",
-    ["scope", "repository"]
+RUNNERS_ONLINE = Gauge(
+    "github_actions_runners_online",
+    "Online self-hosted runners",
+    ["org", "repo", "scope"]
 )
 
-RUNNER_OFFLINE = Gauge(
-    "github_runners_offline",
-    "Number of offline GitHub Actions runners",
-    ["scope", "repository"]
+RUNNERS_OFFLINE = Gauge(
+    "github_actions_runners_offline",
+    "Offline self-hosted runners",
+    ["org", "repo", "scope"]
 )
 
-RUNNER_BUSY_COUNT = Gauge(
-    "github_runners_busy",
-    "Number of busy GitHub Actions runners",
-    ["scope", "repository"]
+API_ERRORS = Gauge(
+    "github_actions_api_errors",
+    "GitHub API error status (1=error, 0=success)",
+    ["org", "repo", "scope"]
 )
 
-RUNNER_IDLE = Gauge(
-    "github_runners_idle",
-    "Number of idle GitHub Actions runners",
-    ["scope", "repository"]
-)
 
-EXPORTER_UP = Gauge(
-    "github_exporter_up",
-    "Whether the last GitHub API collection succeeded"
-)
+def load_repositories():
+    """Load repositories from configuration file."""
+    try:
+        with open(REPOS_FILE, "r", encoding="utf-8") as file:
+            return [
+                line.strip()
+                for line in file
+                if line.strip() and not line.strip().startswith("#")
+            ]
+    except FileNotFoundError:
+        logging.warning("Repository file %s not found", REPOS_FILE)
+        return []
 
-LAST_COLLECTION = Gauge(
-    "github_exporter_last_collection_timestamp",
-    "Unix timestamp of last successful collection"
-)
 
 
 def get_runners(endpoint):
-    """Fetch all runners, handling API pagination."""
-
+    """Fetch all GitHub runner pages."""
     runners = []
     page = 1
+    per_page = 100
+    total_count = None
 
     while True:
-        response = session.get(
+        logging.info("Fetching %s page %d", endpoint, page)
+
+        response = SESSION.get(
             endpoint,
             params={
-                "per_page": 100,
-                "page": page
+                "per_page": per_page,
+                "page": page,
             },
-            timeout=15
+            timeout=30,
         )
 
         response.raise_for_status()
-
         data = response.json()
+
         batch = data.get("runners", [])
+
+        if total_count is None:
+            total_count = data.get("total_count", 0)
+            logging.info("GitHub reports %d runners", total_count)
 
         runners.extend(batch)
 
-        if len(batch) < 100:
+        logging.info(
+            "Page %d returned %d runners; collected %d/%d",
+            page,
+            len(batch),
+            len(runners),
+            total_count,
+        )
+
+        # Stop if all runners have been retrieved
+        if len(runners) >= total_count:
+            break
+
+        # Prevent infinite loops if API returns an empty page
+        if not batch:
+            logging.warning("Empty page received; stopping pagination")
             break
 
         page += 1
 
+    logging.info("Total runners retrieved: %d", len(runners))
     return runners
 
 
-def collect_runners(endpoint, scope, repository):
-    """Collect runner metrics from GitHub."""
-
+def collect_scope(org, repo, scope, endpoint):
+    """Collect runner metrics for organization or repository."""
     runners = get_runners(endpoint)
 
-    total = len(runners)
     online = 0
     offline = 0
-    busy = 0
-    idle = 0
 
     for runner in runners:
-
-        name = runner.get("name", "unknown")
-        status = runner.get("status", "offline")
-        is_busy = runner.get("busy", False)
+        name = runner["name"]
+        runner_id = str(runner["id"])
         os_name = runner.get("os", "unknown")
+        status = runner.get("status", "offline")
+        busy = runner.get("busy", False)
         version = runner.get("version", "unknown")
 
         labels = ",".join(
-            sorted(
-                label.get("name", "")
-                for label in runner.get("labels", [])
-            )
+            label["name"] for label in runner.get("labels", [])
         )
 
-        is_online = status == "online"
+        is_online = 1 if status == "online" else 0
 
-        if is_online:
-            online += 1
-        else:
-            offline += 1
-
-        if is_busy:
-            busy += 1
-        else:
-            idle += 1
+        online += is_online
+        offline += 1 - is_online
 
         RUNNER_STATUS.labels(
-            scope, repository, name, os_name
-        ).set(1 if is_online else 0)
+            org, repo, name, runner_id, os_name, scope
+        ).set(is_online)
 
         RUNNER_BUSY.labels(
-            scope, repository, name
-        ).set(1 if is_busy else 0)
+            org, repo, name, runner_id, scope
+        ).set(1 if busy else 0)
 
-        RUNNER_INFO.labels(
-            scope, repository, name, version, labels
-        ).set(1)
+# Only expose runner info for repositories in repos.txt
+        if scope == "repo" and repo:
+            RUNNER_INFO.labels(
+                org,
+                repo,
+                name,
+                runner_id,
+                os_name,
+                runner.get("architecture", "unknown"),
+                version,
+                labels,
+                scope,
+            ).set(1)
 
-    # Aggregate metrics
+    RUNNERS_TOTAL.labels(org, repo, scope).set(len(runners))
+    RUNNERS_ONLINE.labels(org, repo, scope).set(online)
+    RUNNERS_OFFLINE.labels(org, repo, scope).set(offline)
 
-    RUNNER_TOTAL.labels(scope, repository).set(total)
-    RUNNER_ONLINE.labels(scope, repository).set(online)
-    RUNNER_OFFLINE.labels(scope, repository).set(offline)
-    RUNNER_BUSY_COUNT.labels(scope, repository).set(busy)
-    RUNNER_IDLE.labels(scope, repository).set(idle)
+    API_ERRORS.labels(org, repo, scope).set(0)
 
-    logger.info(
-        "%s/%s: total=%d online=%d offline=%d busy=%d idle=%d",
-        scope, repository, total, online, offline, busy, idle
+    logging.info(
+        "%s %s: %d runners (%d online, %d offline)",
+        scope, repo, len(runners), online, offline
     )
 
 
-def collect():
+def collect_metrics():
+    # Clear runner metrics to remove deleted runners/repos
+    RUNNER_STATUS.clear()
+    RUNNER_BUSY.clear()
+    RUNNER_INFO.clear()
 
-    try:
-        # Organization-level runners
-        if GITHUB_ORG:
-            endpoint = f"{GITHUB_API}/orgs/{GITHUB_ORG}/actions/runners"
+    repositories = load_repositories()
 
-            collect_runners(
-                endpoint,
-                "organization",
-                GITHUB_ORG
+    # Organization runners
+    if GITHUB_ORG:
+        try:
+            collect_scope(
+                GITHUB_ORG,
+                "",
+                "org",
+                f"{API_URL}/orgs/{GITHUB_ORG}/actions/runners",
+            )
+        except Exception as exc:
+            logging.error("Organization runners failed: %s", exc)
+            API_ERRORS.labels(GITHUB_ORG, "", "org").set(1)
+
+    # Repository runners
+    for full_repo in repositories:
+        try:
+            owner, repo = full_repo.split("/", 1)
+
+            collect_scope(
+                owner,
+                repo,
+                "repo",
+                f"{API_URL}/repos/{owner}/{repo}/actions/runners",
             )
 
-        # Repository-level runners
-        for repo in filter(None, GITHUB_REPOS.split(",")):
-            repo = repo.strip()
+        except Exception as exc:
+            logging.error("Repository %s failed: %s", full_repo, exc)
 
-            endpoint = (
-                f"{GITHUB_API}/repos/{repo}/actions/runners"
-            )
-
-            collect_runners(
-                endpoint,
-                "repository",
-                repo
-            )
-
-        EXPORTER_UP.set(1)
-        LAST_COLLECTION.set(time.time())
-
-    except requests.RequestException as exc:
-        logger.exception("GitHub API request failed: %s", exc)
-        EXPORTER_UP.set(0)
-
-    except Exception:
-        logger.exception("Unexpected collection error")
-        EXPORTER_UP.set(0)
+            try:
+                owner, repo = full_repo.split("/", 1)
+                API_ERRORS.labels(owner, repo, "repo").set(1)
+            except ValueError:
+                logging.error("Invalid repository format: %s", full_repo)
 
 
 def main():
-
-    logger.info(
-        "Starting GitHub Actions Runner Exporter on port %d",
-        EXPORTER_PORT
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
     )
 
-    start_http_server(EXPORTER_PORT)
+    if not GITHUB_TOKEN:
+        raise ValueError("GITHUB_TOKEN must be set")
+
+    start_http_server(PORT)
+
+    logging.info("Exporter listening on port %d", PORT)
 
     while True:
-        collect()
+        collect_metrics()
         time.sleep(POLL_INTERVAL)
 
 
