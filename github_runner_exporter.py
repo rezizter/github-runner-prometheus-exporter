@@ -84,8 +84,6 @@ def load_repositories():
         logging.warning("Repository file %s not found", REPOS_FILE)
         return []
 
-
-
 def get_runners(endpoint):
     """Fetch all GitHub runner pages."""
     runners = []
@@ -260,4 +258,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
