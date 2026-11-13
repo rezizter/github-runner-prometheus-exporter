@@ -13,7 +13,7 @@ It supports:
 * API error and exporter health monitoring.
 
 Included is a dashboard for Grafana to display the metrics
-![image](./img/GitHub_Actions_Runners_Health_-_Dashboards_-_Grafana.png){: style="width:150:px"}
+![image](./img/GitHub_Actions_Runners_Health_-_Dashboards_-_Grafana.png)
 
 # Install
 Clone this reepo
