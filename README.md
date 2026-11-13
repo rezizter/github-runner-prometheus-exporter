@@ -54,8 +54,8 @@ python github_runner_exporter.py
 
 # Check Prometheus metrics
 Open:
-!!! note
-    http://localhost:9877/metrics
+> [!NOTE]
+> http://localhost:9877/metrics
 
 Example output:
 ```
@@ -71,7 +71,7 @@ github_runners_idle{scope="organization",repository="my-organization"} 3
 ```
 
 # Prometheus configuration
-Add the following to ==prometheus.yml==:
+Add the following to <mark>prometheus.yml</mark>:
 ```
 Add the following to prometheus.yml:
 
