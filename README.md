@@ -1,3 +1,4 @@
+[![Test github-runner-prometheus-exporter](https://github.com/rezizter/github-runner-prometheus-exporter/actions/workflows/test.yml/badge.svg)](https://github.com/rezizter/github-runner-prometheus-exporter/actions/workflows/test.yml)
 # Introduction
 This is a Prometheus exporter, written in GO, that connects to the GitHub REST API and collects the status of GitHub Actions self-hosted runners.
 It supports:
