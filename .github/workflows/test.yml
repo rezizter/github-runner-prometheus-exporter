@@ -1,0 +1,33 @@
+name: Test github-runner-prometheus-exporter
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26' # Match your project's Go version
+
+      - name: Install Dependencies
+        run: go mod download
+
+      - name: Run Tests with Race Detector and Coverage
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Upload Coverage Report (Optional)
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage
+          path: coverage.out
