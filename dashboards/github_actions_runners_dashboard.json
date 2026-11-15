@@ -48,7 +48,7 @@
         "kind": "Panel",
         "spec": {
           "id": 2,
-          "title": "Runners online",
+          "title": "Runner status",
           "description": "Registered runners currently online",
           "links": [],
           "data": {
@@ -129,7 +129,7 @@
         "kind": "Panel",
         "spec": {
           "id": 27,
-          "title": "Runners with no PAT admin access",
+          "title": "Runners with errors",
           "description": "",
           "links": [],
           "data": {
