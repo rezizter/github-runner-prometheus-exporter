@@ -12,12 +12,12 @@ It supports:
 * Automatic polling of GitHub.
 * API error and exporter health monitoring.
 
-Included is a dashboard for Grafana to display the metrics
+Included is a dashboard for Grafana to display the metrics.
 ![image](./img/GitHub_Actions_Runners_Health_-_Dashboards_-_Grafana.png)
 
 # Go Installation
 ## Install
-Clone this reepo:
+Clone this repo:
 ```
 git clone https://github.com/rezizter/github-runner-prometheus-exporter.git
 cd github-runner-prometheus-exporter
@@ -30,7 +30,7 @@ go build -o github-runner-prometheus-exporter ./main.go
 
 # Python Installion
 ## Install
-Clone this reepo
+Clone this repo:
 ```
 git clone https://github.com/rezizter/github-runner-prometheus-exporter.git
 cd github-runner-prometheus-exporter/python
