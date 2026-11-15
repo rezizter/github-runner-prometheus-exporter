@@ -50,6 +50,22 @@ export POLL_INTERVAL=60
 export EXPORTER_PORT=9877
 ```
 
+# Set the repositories you want to monitor
+Open the repo file:
+
+```
+vi repos.txt
+```
+Add your entries with user — path/repo — path
+
+```
+# One repository per line
+my-org/backend
+my-org/frontend
+my-org/infrastructure
+another-org/platform
+```
+
 # Start the exporter
 Run the following:
 ```
