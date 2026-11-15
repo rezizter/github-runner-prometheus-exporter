@@ -50,7 +50,8 @@ export POLL_INTERVAL=60
 export EXPORTER_PORT=9877
 ```
 
-Start the exporter:
+# Start the exporter
+Run the following:
 ```
 ./github_runner_exporter
 ```
