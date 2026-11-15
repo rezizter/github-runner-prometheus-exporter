@@ -42,10 +42,6 @@ Set environment variables:
 ```
 export GITHUB_TOKEN="github_pat_xxxxxxxxx"
 export GITHUB_ORG="my-organization"
-
-# Optional: monitor specific repositories
-export GITHUB_REPOS="my-organization/repo1,my-organization/repo2"
-
 export POLL_INTERVAL=60
 export EXPORTER_PORT=9877
 ```
