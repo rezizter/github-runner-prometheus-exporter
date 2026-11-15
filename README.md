@@ -1,5 +1,5 @@
 # Introduction
-This is a Python Prometheus exporter that connects to the GitHub REST API and collects the status of GitHub Actions self-hosted runners.
+This is a Go and Python Prometheus exporter that connects to the GitHub REST API and collects the status of GitHub Actions self-hosted runners.
 It supports:
 
 * Organization-level runners.
@@ -15,14 +15,28 @@ It supports:
 Included is a dashboard for Grafana to display the metrics
 ![image](./img/GitHub_Actions_Runners_Health_-_Dashboards_-_Grafana.png)
 
-# Install
-Clone this reepo
+# Go Installation
+## Install
+Clone this reepo:
 ```
 git clone https://github.com/rezizter/github-runner-prometheus-exporter.git
 cd github-runner-prometheus-exporter
 ```
 
-Install the required packages.
+Build the package for your operating system:
+```
+go build -o github-runner-prometheus-exporter ./main.go
+```
+
+# Python Installion
+## Install
+Clone this reepo
+```
+git clone https://github.com/rezizter/github-runner-prometheus-exporter.git
+cd github-runner-prometheus-exporter/python
+```
+
+Install the required packages:
 ```
 python3 -m venv venv
 source venv/bin/activate
@@ -51,6 +65,12 @@ export EXPORTER_PORT=9877
 ```
 
 Start the exporter:
+For GO compilations:
+```
+./github_runner_exporter
+```
+
+For Python installations:
 ```
 python github_runner_exporter.py
 ```
