@@ -12,7 +12,7 @@ It supports:
 * Busy/idle status.
 * Runner counts and availability.
 * Runner OS, labels and version.
-rics [dashboards/github_actions_runners_dashboard.json](https://github.com/rezizter/github-runner-prometheus-exporter/dashboards/github_actions_runners_dashboard.json).* Prometheus metrics.
+* Prometheus metrics.
 * Alert Manager rules.
 * Automatic polling of GitHub.
 * API error and exporter health monitoring.
