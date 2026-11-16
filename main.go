@@ -299,4 +299,82 @@ func collectScope(client *http.Client, org, repo, scope, endpoint string) {
 			if arch == "" {
 				arch = "unknown"
 			}
-			runnerInfo.WithLabelValues(org, repo, name, runnerID, osName, arch, version, labelsStr
+			runnerInfo.WithLabelValues(org, repo, name, runnerID, osName, arch, version, labelsStr, scope).Set(1)
+		}
+	}
+
+	runnersTotal.WithLabelValues(org, repo, scope).Set(float64(len(runners)))
+	runnersOnline.WithLabelValues(org, repo, scope).Set(float64(online))
+	runnersOffline.WithLabelValues(org, repo, scope).Set(float64(offline))
+	apiErrors.WithLabelValues(org, repo, scope).Set(0)
+
+	log.Printf("%s %s: %d runners (%d online, %d offline)", scope, repo, len(runners), online, offline)
+}
+
+// Coordinate collection across all targets
+func collectMetrics(client *http.Client) {
+	// Reset all metrics to clear deleted runners, removed repos, and stale error flags
+	runnerStatus.Reset()
+	runnerBusy.Reset()
+	runnerInfo.Reset()
+	runnersTotal.Reset()
+	runnersOnline.Reset()
+	runnersOffline.Reset()
+	apiErrors.Reset()
+
+	repositories := loadRepositories()
+
+	// Organization runners
+	if githubOrg != "" {
+		endpoint := fmt.Sprintf("%s/orgs/%s/actions/runners", apiURL, githubOrg)
+		collectScope(client, githubOrg, "", "org", endpoint)
+	}
+
+	// Repository runners
+	for _, fullRepo := range repositories {
+		parts := strings.SplitN(fullRepo, "/", 2)
+		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+			log.Printf("Invalid repository format: %s", fullRepo)
+			apiErrors.WithLabelValues("", fullRepo, "repo").Set(1)
+			continue
+		}
+		owner, repo := parts[0], parts[1]
+		endpoint := fmt.Sprintf("%s/repos/%s/%s/actions/runners", apiURL, owner, repo)
+		collectScope(client, owner, repo, "repo", endpoint)
+	}
+}
+
+func main() {
+	parseFlags()
+
+	if githubToken == "" {
+		fmt.Fprintln(os.Stderr, "Error: GitHub token must be provided via --token or GITHUB_TOKEN")
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
+	}
+	client := &http.Client{
+		Transport: tr,
+		Timeout:   30 * time.Second,
+	}
+
+	// Expose Prometheus metrics endpoint
+	http.Handle("/metrics", promhttp.Handler())
+	addr := fmt.Sprintf(":%d", port)
+
+	go func() {
+		log.Printf("Exporter listening on port %d", port)
+		if err := http.ListenAndServe(addr, nil); err != nil {
+			log.Fatalf("HTTP server failed: %v", err)
+		}
+	}()
+
+	// Main poll loop
+	for {
+		collectMetrics(client)
+		time.Sleep(time.Duration(pollInterval) * time.Second)
+	}
+}
