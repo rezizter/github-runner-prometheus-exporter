@@ -39,13 +39,28 @@ Required permissions:
 * Repository runners: Administration: Read-only
 The token must also have the necessary organization/repository access. See the [GitHub runner API documentation](https://docs.github.com/en/rest/actions/self-hosted-runners?apiVersion=2026-03-10) .
 
-Set environment variables:
+# Environment Variables
+You can set environment variables by passing flags as configuration options, or by exporting the values.
+
+## Set environment variables on a system level:
 ```
 export GITHUB_TOKEN="github_pat_xxxxxxxxx"
 export GITHUB_ORG="my-organization"
 export POLL_INTERVAL=60
 export EXPORTER_PORT=9877
 ```
+
+## Set environment variables on a system level:
+The following variables are supported:
+
+| Flag 		  | Variable 	    | Required / Optional |
+| :-------------- | :-------------: | ------------------: |
+| --token	  | github_pat_xxxx |  Required		  |
+| --repos-file	  | repo.txt	    |  Required           |
+| --org		  | my-organization |  Optionial	  |
+| --poll-interval | 60		    |  Optionial          |
+| --port	  | 9877	    |  Optionial          |
+| --api-url	  | localhost	    |  Optionial          |
 
 # Set the repositories you want to monitor
 Open the repo file:
