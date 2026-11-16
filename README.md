@@ -32,7 +32,7 @@ go build -o github-runner-prometheus-exporter ./main.go
 ```
 
 # Configure GitHub authentication
-Create a GitHub Personal Access Token (fine-grained).
+[Create a GitHub Personal Access Token (fine-grained).](https://github.com/settings/personal-access-tokens)
 
 Required permissions:
 * Organization runners: Self-hosted runners: Read-only
