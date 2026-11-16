@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -25,6 +26,16 @@ var (
 	port         int
 	apiURL       string
 )
+
+// apiError categorizes API failures for low-cardinality Prometheus labels
+type apiError struct {
+	status string
+	err    error
+}
+
+func (e *apiError) Error() string {
+	return e.err.Error()
+}
 
 func getEnv(key, fallback string) string {
 	if val, exists := os.LookupEnv(key); exists {
@@ -116,7 +127,7 @@ var (
 			Name: "github_actions_api_errors",
 			Help: "GitHub API error status (1=error, 0=success)",
 		},
-		[]string{"org", "repo", "scope"},
+		[]string{"org", "repo", "scope", "status"},
 	)
 )
 
@@ -170,13 +181,13 @@ func loadRepositories() []string {
 	return repos
 }
 
-// fetchRunnerPage executes a single paginated request and ensures resp.Body is closed immediately
+// fetchRunnerPage executes a single paginated request and categorizes any error
 func fetchRunnerPage(client *http.Client, endpoint string, perPage, page int) (*RunnerResponse, error) {
 	url := fmt.Sprintf("%s?per_page=%d&page=%d", endpoint, perPage, page)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, err
+		return nil, &apiError{status: "request_error", err: err}
 	}
 
 	req.Header.Set("Authorization", "Bearer "+githubToken)
@@ -186,17 +197,20 @@ func fetchRunnerPage(client *http.Client, endpoint string, perPage, page int) (*
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, &apiError{status: "network_error", err: err}
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("bad status: %s", resp.Status)
+		return nil, &apiError{
+			status: strconv.Itoa(resp.StatusCode),
+			err:    fmt.Errorf("bad status: %s", resp.Status),
+		}
 	}
 
 	var result RunnerResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, err
+		return nil, &apiError{status: "decode_error", err: err}
 	}
 
 	return &result, nil
@@ -246,8 +260,14 @@ func getRunners(client *http.Client, endpoint string) ([]Runner, error) {
 func collectScope(client *http.Client, org, repo, scope, endpoint string) {
 	runners, err := getRunners(client, endpoint)
 	if err != nil {
-		log.Printf("Error fetching %s %s: %v", scope, repo, err)
-		apiErrors.WithLabelValues(org, repo, scope).Set(1)
+		errStatus := "unknown_error"
+		var aErr *apiError
+		if errors.As(err, &aErr) {
+			errStatus = aErr.status
+		}
+
+		log.Printf("Error fetching %s %s (status=%s): %v", scope, repo, errStatus, err)
+		apiErrors.WithLabelValues(org, repo, scope, errStatus).Set(1)
 		return
 	}
 
@@ -306,14 +326,14 @@ func collectScope(client *http.Client, org, repo, scope, endpoint string) {
 	runnersTotal.WithLabelValues(org, repo, scope).Set(float64(len(runners)))
 	runnersOnline.WithLabelValues(org, repo, scope).Set(float64(online))
 	runnersOffline.WithLabelValues(org, repo, scope).Set(float64(offline))
-	apiErrors.WithLabelValues(org, repo, scope).Set(0)
+	apiErrors.WithLabelValues(org, repo, scope, "ok").Set(0)
 
 	log.Printf("%s %s: %d runners (%d online, %d offline)", scope, repo, len(runners), online, offline)
 }
 
 // Coordinate collection across all targets
 func collectMetrics(client *http.Client) {
-	// Reset all metrics to clear deleted runners, removed repos, and stale error flags
+	// Reset all metrics to clear deleted runners, removed repos, and previous error statuses
 	runnerStatus.Reset()
 	runnerBusy.Reset()
 	runnerInfo.Reset()
@@ -335,7 +355,7 @@ func collectMetrics(client *http.Client) {
 		parts := strings.SplitN(fullRepo, "/", 2)
 		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 			log.Printf("Invalid repository format: %s", fullRepo)
-			apiErrors.WithLabelValues("", fullRepo, "repo").Set(1)
+			apiErrors.WithLabelValues("", fullRepo, "repo", "invalid_repo_format").Set(1)
 			continue
 		}
 		owner, repo := parts[0], parts[1]
