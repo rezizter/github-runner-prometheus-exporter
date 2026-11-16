@@ -16,8 +16,8 @@ It supports:
 * Automatic polling of GitHub.
 * API error and exporter health monitoring.
 
-Included is a dashboard for Grafana to display the metrics (dashboards/github_actions_runners_dashboard.json).
-![image][/img/GitHub_Actions_Runners_Health_-_Dashboards_-_Grafana.png](https://github.com/rezizter/github-runner-prometheus-exporter/dashboards/github_actions_runners_dashboard.json).
+Included is a dashboard for Grafana to display the metrics [dashboards/github_actions_runners_dashboard.json](https://github.com/rezizter/github-runner-prometheus-exporter/dashboards/github_actions_runners_dashboard.json).
+![image](./img/GitHub_Actions_Runners_Health_-_Dashboards_-_Grafana.png)
 
 # Install
 Clone this repo:
