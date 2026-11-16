@@ -82,7 +82,7 @@ another-org/platform
 # Start the exporter
 Run the following:
 ```
-./github_runner_exporter
+./github_runner_exporter --token=github_pat_xxxx
 ```
 
 # Check Prometheus metrics
