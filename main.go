@@ -47,7 +47,7 @@ func parseFlags() {
 	flag.StringVar(&githubOrg, "org", getEnv("GITHUB_ORG", ""), "GitHub organization name to monitor (env: GITHUB_ORG)")
 	flag.StringVar(&reposFile, "repos-file", getEnv("REPOS_FILE", "repos.txt"), "Path to file containing owner/repo list (env: REPOS_FILE)")
 	flag.IntVar(&pollInterval, "poll-interval", getEnvAsInt("POLL_INTERVAL", 60), "Polling interval in seconds (env: POLL_INTERVAL)")
-	flag.IntVar(&port, "port", getEnvAsInt("EXPORTER_PORT", 9105), "HTTP port for Prometheus metrics endpoint (env: EXPORTER_PORT)")
+	flag.IntVar(&port, "port", getEnvAsInt("EXPORTER_PORT", 9877), "HTTP port for Prometheus metrics endpoint (env: EXPORTER_PORT)")
 	flag.StringVar(&apiURL, "api-url", getEnv("GITHUB_API_URL", "https://api.github.com"), "GitHub API base URL (env: GITHUB_API_URL)")
 
 	flag.Usage = func() {
@@ -55,7 +55,7 @@ func parseFlags() {
 		fmt.Fprintf(os.Stderr, "Usage:\n  %s [options]\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Options (CLI flags override environment variables):\n")
 		flag.PrintDefaults()
-		fmt.Fprintf(os.Stderr, "\nExample:\n  %s --token=ghp_xxx --org=my-org --port=9105\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "\nExample:\n  %s --token=ghp_xxx --org=my-org --port=9877\n", os.Args[0])
 	}
 
 	flag.Parse()
