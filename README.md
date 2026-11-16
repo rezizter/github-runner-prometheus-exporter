@@ -113,4 +113,4 @@ Add the following to <mark>prometheus.yml</mark>:
 ```
 
 # Alert Manager
-Included are rules for alert manager [alert_manager/github_actions_runner_alerts.yml](https://github.com/rezizter/github-runner-prometheus-exporter/tree/main/alert_manager).
+Included are rules for alert manager [alert_manager/github_actions_runner_alerts.yml](https://github.com/rezizter/github-runner-prometheus-exporter/blob/main/alert_manager/github_actions_runner_alerts.yml).
