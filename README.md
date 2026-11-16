@@ -1,7 +1,7 @@
 [![Test github-runner-prometheus-exporter](https://github.com/rezizter/github-runner-prometheus-exporter/actions/workflows/test.yml/badge.svg)](https://github.com/rezizter/github-runner-prometheus-exporter/actions/workflows/test.yml)
 [![Latest Release](https://img.shields.io/badge/Release-latest-brightgreen.svg)](https://github.com/rezizter/github-runner-prometheus-exporter/releases/latest)
 [![GO version](https://img.shields.io/github/go-mod/go-version/rezizter/github-runner-prometheus-exporter)](https://go.dev/doc/go1.26)
-[![Repository License](https://img.shields.io/badge/license-GPL%20v3.0-brightgreen.svg)]
+[![Repository License](https://img.shields.io/badge/license-GPL%20v3.0-brightgreen.svg)
 # Introduction
 This is a Prometheus exporter, written in GO, that connects to the GitHub REST API and collects the status of GitHub Actions self-hosted runners.
 It supports:
