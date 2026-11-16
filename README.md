@@ -53,14 +53,14 @@ export EXPORTER_PORT=9877
 ## Set environment variables on a system level:
 The following variables are supported:
 
-| Flag 		  | Variable 	    | Required / Optional |
-| :-------------- | :-------------: | ------------------: |
-| --token	  | github_pat_xxxx |  Required		  |
-| --repos-file	  | repo.txt	    |  Required           |
-| --org		  | my-organization |  Optionial	  |
-| --poll-interval | 60		    |  Optionial          |
-| --port	  | 9877	    |  Optionial          |
-| --api-url	  | localhost	    |  Optionial          |
+| Flag 		  | Variable		   | Required / Optional |
+| :-------------- | :--------------------: | ------------------: |
+| --token	  | github_pat_xxxx	   |  Required		 |
+| --repos-file	  | repo.txt		   |  Optionial          |
+| --org		  | my-organization	   |  Optionial		 |
+| --poll-interval | 60			   |  Optionial          |
+| --port	  | 9877		   |  Optionial          |
+| --api-url	  | https://api.github.com |  Optionial          |
 
 # Set the repositories you want to monitor
 Open the repo file:
