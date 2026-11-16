@@ -121,7 +121,6 @@ var (
 )
 
 func init() {
-	// Register metrics with Prometheus
 	prometheus.MustRegister(runnerStatus)
 	prometheus.MustRegister(runnerBusy)
 	prometheus.MustRegister(runnerInfo)
@@ -171,6 +170,38 @@ func loadRepositories() []string {
 	return repos
 }
 
+// fetchRunnerPage executes a single paginated request and ensures resp.Body is closed immediately
+func fetchRunnerPage(client *http.Client, endpoint string, perPage, page int) (*RunnerResponse, error) {
+	url := fmt.Sprintf("%s?per_page=%d&page=%d", endpoint, perPage, page)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+githubToken)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	req.Header.Set("User-Agent", "github-actions-runner-exporter")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("bad status: %s", resp.Status)
+	}
+
+	var result RunnerResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
 // Fetch all runner pages from GitHub API with pagination
 func getRunners(client *http.Client, endpoint string) ([]Runner, error) {
 	var allRunners []Runner
@@ -180,29 +211,9 @@ func getRunners(client *http.Client, endpoint string) ([]Runner, error) {
 
 	for {
 		log.Printf("Fetching %s page %d", endpoint, page)
-		url := fmt.Sprintf("%s?per_page=%d&page=%d", endpoint, perPage, page)
 
-		req, err := http.NewRequest("GET", url, nil)
+		result, err := fetchRunnerPage(client, endpoint, perPage, page)
 		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("Authorization", "Bearer "+githubToken)
-		req.Header.Set("Accept", "application/vnd.github+json")
-		req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
-
-		resp, err := client.Do(req)
-		if err != nil {
-			return nil, err
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("bad status: %s", resp.Status)
-		}
-
-		var result RunnerResponse
-		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 			return nil, err
 		}
 
@@ -213,7 +224,6 @@ func getRunners(client *http.Client, endpoint string) ([]Runner, error) {
 		}
 
 		allRunners = append(allRunners, result.Runners...)
-
 		log.Printf("Page %d returned %d runners; collected %d/%d", page, len(result.Runners), len(allRunners), *totalCount)
 
 		if len(allRunners) >= *totalCount {
@@ -289,77 +299,4 @@ func collectScope(client *http.Client, org, repo, scope, endpoint string) {
 			if arch == "" {
 				arch = "unknown"
 			}
-			runnerInfo.WithLabelValues(org, repo, name, runnerID, osName, arch, version, labelsStr, scope).Set(1)
-		}
-	}
-
-	runnersTotal.WithLabelValues(org, repo, scope).Set(float64(len(runners)))
-	runnersOnline.WithLabelValues(org, repo, scope).Set(float64(online))
-	runnersOffline.WithLabelValues(org, repo, scope).Set(float64(offline))
-	apiErrors.WithLabelValues(org, repo, scope).Set(0)
-
-	log.Printf("%s %s: %d runners (%d online, %d offline)", scope, repo, len(runners), online, offline)
-}
-
-// Coordinate collection across all targets
-func collectMetrics(client *http.Client) {
-	// Reset metrics to remove deleted runners/repos (equivalent to python's .clear())
-	runnerStatus.Reset()
-	runnerBusy.Reset()
-	runnerInfo.Reset()
-
-	repositories := loadRepositories()
-
-	// Organization runners
-	if githubOrg != "" {
-		endpoint := fmt.Sprintf("%s/orgs/%s/actions/runners", apiURL, githubOrg)
-		collectScope(client, githubOrg, "", "org", endpoint)
-	}
-
-	// Repository runners
-	for _, fullRepo := range repositories {
-		parts := strings.SplitN(fullRepo, "/", 2)
-		if len(parts) != 2 {
-			log.Printf("Invalid repository format: %s", fullRepo)
-			continue
-		}
-		owner, repo := parts[0], parts[1]
-		endpoint := fmt.Sprintf("%s/repos/%s/%s/actions/runners", apiURL, owner, repo)
-		collectScope(client, owner, repo, "repo", endpoint)
-	}
-}
-
-func main() {
-	parseFlags()
-
-	if githubToken == "" {
-		fmt.Fprintln(os.Stderr, "Error: GitHub token must be provided via --token or GITHUB_TOKEN")
-		flag.Usage()
-		os.Exit(1)
-	}
-
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
-	}
-	client := &http.Client{
-		Transport: tr,
-		Timeout:   30 * time.Second,
-	}
-
-	// Expose Prometheus metrics endpoint
-	http.Handle("/metrics", promhttp.Handler())
-	addr := fmt.Sprintf(":%d", port)
-
-	go func() {
-		log.Printf("Exporter listening on port %d", port)
-		if err := http.ListenAndServe(addr, nil); err != nil {
-			log.Fatalf("HTTP server failed: %v", err)
-		}
-	}()
-
-	// Main poll loop
-	for {
-		collectMetrics(client)
-		time.Sleep(time.Duration(pollInterval) * time.Second)
-	}
-}
+			runnerInfo.WithLabelValues(org, repo, name, runnerID, osName, arch, version, labelsStr
