@@ -1,7 +1,7 @@
 [![Test github-runner-prometheus-exporter](https://github.com/rezizter/github-runner-prometheus-exporter/actions/workflows/test.yml/badge.svg)](https://github.com/rezizter/github-runner-prometheus-exporter/actions/workflows/test.yml)
 [![Latest Release](https://img.shields.io/badge/Release-latest-brightgreen.svg)](https://github.com/rezizter/github-runner-prometheus-exporter/releases/latest)
 [![GO version](https://img.shields.io/github/go-mod/go-version/rezizter/github-runner-prometheus-exporter)](https://go.dev/doc/go1.26)
-[![Repository License](https://img.shields.io/badge/license-GPL%20v3.0-brightgreen.svg)
+[![Repository License](https://img.shields.io/github/license/rezizter/github-runner-prometheus-exporter)
 # Introduction
 This is a Prometheus exporter, written in GO, that connects to the GitHub REST API and collects the status of GitHub Actions self-hosted runners.
 It supports:
@@ -12,7 +12,8 @@ It supports:
 * Busy/idle status.
 * Runner counts and availability.
 * Runner OS, labels and version.
-* Prometheus metrics.
+rics [dashboards/github_actions_runners_dashboard.json](https://github.com/rezizter/github-runner-prometheus-exporter/dashboards/github_actions_runners_dashboard.json).* Prometheus metrics.
+* Alert Manager rules.
 * Automatic polling of GitHub.
 * API error and exporter health monitoring.
 
@@ -110,3 +111,6 @@ Add the following to <mark>prometheus.yml</mark>:
   - targets:
     - localhost:9877
 ```
+
+# Alert Manager
+Included are rules for alert manager [alert_manager/github_actions_runner_alerts.yml](https://github.com/rezizter/github-runner-prometheus-exporter/alert_manager/github_actions_runner_alerts.yml).

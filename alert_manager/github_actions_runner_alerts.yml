@@ -1,0 +1,52 @@
+groups:
+  - name: github_actions_runners
+    rules:
+      # 1. Alert on GitHub API authentication or permission failures (401/403)
+      - alert: GitHubActionsAPIAuthError
+        expr: github_actions_api_errors{status=~"401|403"} == 1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "GitHub API auth or rate-limit error (HTTP {{ $labels.status }})"
+          description: "Exporter failed to query {{ $labels.scope }} {{ $labels.org }}/{{ $labels.repo }} with HTTP {{ $labels.status }}. Check token validity, scopes, or API rate limits."
+
+      # 2. Alert on any other GitHub API errors (404, 5xx, network, decode, invalid format)
+      - alert: GitHubActionsAPIError
+        expr: github_actions_api_errors{status!~"ok|401|403"} == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "GitHub API scrape error ({{ $labels.status }})"
+          description: "Exporter encountered '{{ $labels.status }}' while fetching runners for {{ $labels.scope }} {{ $labels.org }}/{{ $labels.repo }}."
+
+      # 3. Alert when a specific self-hosted runner goes offline
+      - alert: GitHubActionsRunnerOffline
+        expr: github_actions_runner_status == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Self-hosted runner {{ $labels.runner }} is offline"
+          description: "Runner '{{ $labels.runner }}' (ID: {{ $labels.runner_id }}, OS: {{ $labels.os }}) in {{ $labels.scope }} {{ $labels.org }}/{{ $labels.repo }} has been offline for more than 5 minutes."
+
+      # 4. Critical alert when an org or repo has zero online runners available
+      - alert: GitHubActionsNoOnlineRunners
+        expr: github_actions_runners_total > 0 and github_actions_runners_online == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No online runners available for {{ $labels.org }}/{{ $labels.repo }}"
+          description: "All {{ $value }} self-hosted runners for {{ $labels.scope }} {{ $labels.org }}/{{ $labels.repo }} are offline. CI/CD jobs will queue indefinitely."
+
+      # 5. Alert if the exporter itself is down or unreachable
+      - alert: GitHubActionsExporterDown
+        expr: up{job="github-actions-runner-exporter"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "GitHub Actions Runner Exporter is down"
+          description: "Prometheus cannot scrape the GitHub Actions Runner Exporter instance {{ $labels.instance }}."
