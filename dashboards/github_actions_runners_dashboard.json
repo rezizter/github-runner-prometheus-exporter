@@ -631,7 +631,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(github_actions_api_errors{scope=\"repo\", status=\"403\"})",
+                        "expr": "sum(github_actions_api_errors{scope=\"repo\", status=\"403\"}) or vector (0)",
                         "instant": true
                       }
                     },
